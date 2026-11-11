@@ -3,10 +3,11 @@ import Combine
 import SwiftUI
 
 /// Menu bar app (no Dock icon): a status item that opens the history popover.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let store = ClipStore(demo: CommandLine.arguments.contains("--demo"))
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
+    private var cursorAnchorWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var hotKey: HotKey?
     private var defaultsObserver: AnyCancellable?
@@ -22,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         popover.behavior = .transient
+        popover.delegate = self
         let hosting = NSHostingController(rootView: HistoryView(
             store: store,
             openSettings: { [weak self] in self?.openSettings() },
@@ -35,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store.startMonitoring()
 
-        hotKey = HotKey { [weak self] in self?.togglePopover() }
+        hotKey = HotKey { [weak self] in self?.presentPopover(fromCursor: true) }
         registerHotKey()
         defaultsObserver = NotificationCenter.default
             .publisher(for: UserDefaults.didChangeNotification)
@@ -44,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Used to take README screenshots: open the list or the settings right away.
         if CommandLine.arguments.contains("--show-history") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.togglePopover() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.presentPopover(fromCursor: false) }
         }
         if CommandLine.arguments.contains("--show-settings") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.openSettings() }
@@ -62,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.appearance = NSAppearance(named: .darkAqua)
         popover.appearance = NSAppearance(named: .darkAqua)
         let steps: [(delay: Double, action: () -> Void)] = [
-            (0.5, { self.togglePopover() }),
+            (0.5, { self.presentPopover(fromCursor: false) }),
             (1.5, { self.snapshot(self.popover.contentViewController?.view, to: directory.appendingPathComponent("lista.png")) }),
             (1.6, { self.openSettings(tab: .general) }),
             (2.6, { self.snapshot(self.settingsWindow?.contentView?.superview, to: directory.appendingPathComponent("preferencias.png")) }),
@@ -107,13 +109,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
+        presentPopover(fromCursor: false)
+    }
+
+    private func presentPopover(fromCursor: Bool) {
         if popover.isShown {
             popover.performClose(nil)
-        } else {
-            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        if fromCursor {
+            showPopoverAtCursor()
+        } else if let button = statusItem.button {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
+    }
+
+    private func showPopoverAtCursor() {
+        let mouseLocation = NSEvent.mouseLocation
+        let anchorWindow = NSWindow(
+            contentRect: NSRect(x: mouseLocation.x, y: mouseLocation.y, width: 1, height: 1),
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        anchorWindow.isOpaque = false
+        anchorWindow.backgroundColor = .clear
+        anchorWindow.alphaValue = 0
+        anchorWindow.ignoresMouseEvents = true
+        anchorWindow.level = .floating
+        anchorWindow.orderFront(nil)
+        cursorAnchorWindow = anchorWindow
+
+        if let anchorView = anchorWindow.contentView {
+            popover.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        cursorAnchorWindow?.orderOut(nil)
+        cursorAnchorWindow = nil
     }
 
     private func openSettings(tab: SettingsTab = .general) {

@@ -108,8 +108,10 @@ final class ClipStore: ObservableObject {
         pasteboard.clearContents()
         pasteboard.setString(clip.text, forType: .string)
         if let index = clips.firstIndex(where: { $0.id == clip.id }) {
-            clips[index].count += 1
-            clips[index].time = Date()
+            var copied = clips.remove(at: index)
+            copied.count += 1
+            copied.time = Date()
+            clips.insert(copied, at: 0)
         }
         save()
     }

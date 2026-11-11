@@ -12,7 +12,6 @@ struct HistoryView: View {
 
     @State private var filter: ClipFilter = .all
     @State private var search = ""
-    @State private var toast: String?
     @State private var confirmDelete = false
 
     var body: some View {
@@ -24,17 +23,6 @@ struct HistoryView: View {
             footer
         }
         .frame(width: 360, height: 480)
-        .overlay(alignment: .bottom) {
-            if let toast {
-                Text(toast)
-                    .font(.callout.weight(.semibold))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Color.caliche, in: Capsule())
-                    .foregroundStyle(.white)
-                    .padding(.bottom, 48)
-                    .transition(.opacity)
-            }
-        }
         .confirmationDialog("¿Borrar elementos?", isPresented: $confirmDelete) {
             Button("Borrar todo excepto favoritos") { store.deleteAll(keepBookmarks: true) }
             Button("Borrar todo", role: .destructive) { store.deleteAll(keepBookmarks: false) }
@@ -115,11 +103,7 @@ struct HistoryView: View {
 
     private func copy(_ clip: Clip) {
         store.copyToPasteboard(clip)
-        withAnimation { toast = "¡Listo para pegar, Caliche! ⌘V" }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            withAnimation { toast = nil }
-            close()
-        }
+        close()
     }
 }
 

@@ -83,7 +83,7 @@ Tu historial no se pierde al recompilar ni al reinstalar.
 ## Uso
 
 - Clic en el ícono de la barra de menú, o ⌥V (Opción + V), para abrir la lista.
-- Clic en un elemento para copiarlo. Aparece "¡Listo para pegar, Caliche! ⌘V" y la lista se cierra.
+- Clic en un elemento para copiarlo al portapapeles, colocarlo al inicio y cerrar la lista.
 - Clic en la estrella para marcarlo como favorito.
 - **Borrar…** abre las opciones para borrar todo o todo excepto favoritos.
 - El engrane abre las preferencias.
